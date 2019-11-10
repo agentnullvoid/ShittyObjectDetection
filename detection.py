@@ -6,10 +6,9 @@ import tensorflow as tf
 import cv2
 
 from matplotlib import pyplot as plt
-# from PIL import Image
 
 # Hack so that we include objection_detection dependencies in the path
-sys.path.insert(0, '/ShittyDetection/object_detection')
+sys.path.insert(0, '/ShittyObjectDetection/object_detection')
 
 from utils import label_map_util
 
@@ -17,10 +16,15 @@ cap = cv2.VideoCapture(0)  # Change only if you have more than one webcams
 
 DETECTION_THRESHOLD = 0.5
 PICTURE_DUMP_DIR = '/root/picturedump/'
-MODEL_NAME = '/ShittyDetection/ssd_inception_v2_coco_2017_11_17'
+MODEL_NAME = '/ShittyObjectDetection/ssd_inception_v2_coco_2017_11_17'
 PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
-PATH_TO_LABELS = os.path.join('/ShittyDetection', 'data', 'mscoco_label_map.pbtxt')
+PATH_TO_LABELS = os.path.join('/ShittyObjectDetection', 'data', 'mscoco_label_map.pbtxt')
 NUM_CLASSES = 90
+
+classes_to_detect = []
+with open('/ShittyObjectDetection/classes_to_detect.txt', 'r') as fp:
+    classes_to_detect = fp.readlines()
+
 
 detection_graph = tf.Graph()
 with detection_graph.as_default():
@@ -58,9 +62,10 @@ with detection_graph.as_default():
                     category_name = (category_index.get(value)).get('name').encode('utf8')
                     # Change this conditional to include other classes
                     # Or be smart about it and pass some ENV or config file
-                    if category_name == 'person':
-                        print("Detected [{}] with probability: {}".format(category_name, scores[0, index]))
+                    if category_name in classes_to_detect:
+                        capture_time = now.strftime("%Y-%m-%d_%H_%M_%S")
+                        print("Detected [{}] on {} with probability: {}".format(category_name, capture_time, scores[0, index]))
                         now = datetime.datetime.now()
-                        capture_name = now.strftime("%Y-%m-%d_%H_%M_%S") + "_" + category_name + "_" + str(scores[0, index])
+                        capture_name = capture_time + "_" + category_name + "_" + str(scores[0, index])
                         capture_file_dest = os.path.join(PICTURE_DUMP_DIR, capture_name + ".jpg")
                         cv2.imwrite(capture_file_dest, image_np)
