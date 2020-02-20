@@ -1,12 +1,12 @@
+import cv2
 import datetime
+import grp
 import numpy as np
 import os
+import pwd
 import sys
 import tensorflow as tf
-import cv2
-import pwd
-import grp
-import os
+import time
 
 from matplotlib import pyplot as plt
 
@@ -24,10 +24,12 @@ from utils import label_map_util
 
 cap = cv2.VideoCapture(0)  # Change only if you have more than one webcams
 
+HEARTBEAT_INTERVAL = 60
+LAST_HEARTBEAT = time.time()
 PICTURE_PREFIX = 'cam_0_'
 DETECTION_THRESHOLD = 0.5
-PICTURE_DUMP_DIR = '/home/' + SUDO_USER +'/picturedump/'
-MODEL_NAME = '/home/' + SUDO_USER +'/ShittyObjectDetection/ssd_inception_v2_coco_2017_11_17'
+PICTURE_DUMP_DIR = '/home/' + SUDO_USER + '/picturedump/'
+MODEL_NAME = '/home/' + SUDO_USER + '/ShittyObjectDetection/ssd_inception_v2_coco_2017_11_17'
 PATH_TO_CKPT = MODEL_NAME + '/frozen_inference_graph.pb'
 PATH_TO_LABELS = os.path.join('ShittyObjectDetection', 'data', 'mscoco_label_map.pbtxt')
 NUM_CLASSES = 90
@@ -54,6 +56,13 @@ category_index = label_map_util.create_category_index(categories)
 with detection_graph.as_default():
     with tf.compat.v1.Session(graph=detection_graph) as sess:
         while True:
+            if time.time() - LAST_HEARTBEAT >= HEARTBEAT_INTERVAL:
+                print("Heartbeat!")
+                LAST_HEARTBEAT = time.time()
+                with open(os.path.join(PICTURE_DUMP_DIR, 'heartbeat.txt'), 'a') as heartbeat_fp:
+                    heartbeat_fp.write('heartbeat @ ' + datetime.datetime.now().strftime("%Y-%m-%d_%H_%M_%S") + "\n")
+                os.chown(os.path.join(PICTURE_DUMP_DIR, 'heartbeat.txt'), uid, gid)
+
             ret, image_np = cap.read()
             image_np_expanded = np.expand_dims(image_np, axis=0)
             image_tensor = detection_graph.get_tensor_by_name('image_tensor:0')
